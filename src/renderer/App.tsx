@@ -13,12 +13,20 @@ import { LayoutGrid, BookOpen, History, Search, Sparkles, Pause, Home } from 'lu
 
 export type View = 'home' | 'decks' | 'history' | 'journal' | 'search' | 'focus' | 'zen'
 
-declare global { interface Window { api: { getState: () => Promise<AgentState>; sendCommand: (cmd: any) => void; onStateUpdate: (cb: (s: AgentState) => void) => () => void; on: (c: string, cb: (d: any) => void) => () => void; hideWindow: () => void } } }
+declare global { interface Window { api: { 
+  getState: () => Promise<AgentState>; 
+  sendCommand: (cmd: any) => void; 
+  onStateUpdate: (cb: (s: AgentState) => void) => () => void; 
+  on: (c: string, cb: (d: any) => void) => () => void; 
+  hideWindow: () => void;
+  toggleMinimize: () => void;
+} } }
 
 export default function App() {
   const [view, setView] = useState<View>('decks')
   const [state, setState] = useState<AgentState | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const [isMinimized, setIsMinimized] = useState(false)
 
   useEffect(() => {
     window.api?.getState().then(s => { setState(s) })
@@ -48,10 +56,11 @@ export default function App() {
       }
     })
     const u2 = window.api?.on('view:open', (v: View) => setView(v))
-    return () => { u1?.(); u2?.() }
+    const u3 = window.api?.on('window:minimized', () => setIsMinimized(true))
+    const u4 = window.api?.on('window:restored', () => setIsMinimized(false))
+    return () => { u1?.(); u2?.(); u3?.(); u4?.() }
   }, [])
 
-  // Live timer for the bottom bar
   useEffect(() => {
     if (!state?.active?.startedAt) { setElapsed(0); return }
     const id = setInterval(() => setElapsed(Math.floor((Date.now() - state.active!.startedAt!) / 1000)), 500)
@@ -63,14 +72,41 @@ export default function App() {
   const activeTask = state.active?.taskIds[0] ? state.tasks.find(t => t.id === state.active!.taskIds[0]) : null
   const isActive = !!state.active?.startedAt
 
+  // MINIMIZED BALL UI
+  if (isMinimized) {
+    return (
+      <div 
+        className="app-shell minimized flex items-center justify-center cursor-pointer"
+        onClick={() => window.api.toggleMinimize()}
+        title="Click to expand"
+      >
+        <div className="text-center pointer-events-none">
+          {isActive ? (
+            <>
+              <div className="timer-mono text-[#ece9e3] text-lg leading-none">{formatDuration(elapsed)}</div>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c] pulse-gold mx-auto mt-2" />
+            </>
+          ) : (
+            <div className="text-[#c9a84c] font-serif text-3xl leading-none">Z</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // EXPANDED UI
   return (
     <div className="app-shell flex flex-col overflow-hidden">
-      {/* Electron Drag Region */}
-      <div className="h-6 flex items-center justify-center shrink-0" style={{ WebkitAppRegion: 'drag' } as any}>
+      {/* Electron Drag Region + Minimize Trigger */}
+      <div 
+        className="h-6 flex items-center justify-center shrink-0 cursor-pointer" 
+        style={{ WebkitAppRegion: 'drag' } as any}
+        onClick={() => window.api.toggleMinimize()}
+        title="Click to minimize to ball"
+      >
         <div className="w-10 h-1 bg-[#222] rounded-full" />
       </div>
 
-      {/* Main View Router (Opacity routing to preserve state) */}
       <main className="flex-1 overflow-hidden relative bg-[#050505]">
         <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'home' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><HomeView state={state} setView={setView} /></div>
         <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'decks' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><DecksView state={state} setView={setView} /></div>
@@ -79,10 +115,8 @@ export default function App() {
         <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'search' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><SearchView state={state} setView={setView} /></div>
       </main>
 
-      {/* Bottom Bar Navigation */}
       {view !== 'focus' && view !== 'zen' && (
         <div className="shrink-0 border-t border-[#1a1a1a] bg-[#060606] relative z-50">
-          {/* Sticky Active Session Pill */}
           {isActive && activeTask && (
             <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between bg-[#0a0a0a]">
               <div className="flex-1 min-w-0 mr-3">
@@ -103,7 +137,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Tab Nav */}
           <div className="flex justify-around items-center h-14 relative z-50">
             <TabBtn id="home" icon={Home} label="Home" view={view} setView={setView} />
             <TabBtn id="decks" icon={LayoutGrid} label="Decks" view={view} setView={setView} />
@@ -115,7 +148,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Full-screen Overlays */}
       {view === 'focus' && <FocusView state={state} onClose={() => setView('decks')} />}
       {view === 'zen' && <ZenView state={state} onClose={() => setView('decks')} />}
       
