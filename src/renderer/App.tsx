@@ -8,7 +8,6 @@ import JournalView from './views/JournalView'
 import SearchView from './views/SearchView'
 import FocusView from './views/FocusView'
 import ZenView from './views/ZenView'
-import Tutorial from './components/Tutorial'
 import { Toaster, toast } from 'sonner'
 import { LayoutGrid, BookOpen, History, Search, Sparkles, Pause, Home } from 'lucide-react'
 
@@ -19,11 +18,10 @@ declare global { interface Window { api: { getState: () => Promise<AgentState>; 
 export default function App() {
   const [view, setView] = useState<View>('decks')
   const [state, setState] = useState<AgentState | null>(null)
-  const [showTutorial, setShowTutorial] = useState(false)
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
-    window.api?.getState().then(s => { setState(s); if (!s.tutorialSeen) setShowTutorial(true) })
+    window.api?.getState().then(s => { setState(s) })
     const unsub = window.api?.onStateUpdate(setState)
     return unsub
   }, [])
@@ -121,7 +119,6 @@ export default function App() {
       {view === 'focus' && <FocusView state={state} onClose={() => setView('decks')} />}
       {view === 'zen' && <ZenView state={state} onClose={() => setView('decks')} />}
       
-      {showTutorial && <Tutorial onComplete={() => { setShowTutorial(false); window.api?.sendCommand({ type: 'SET_TUTORIAL_SEEN', seen: true }) }} />}
       <Toaster position="bottom-center" toastOptions={{ className: 'bg-[#0a0a0a] border border-[#1a1a1a] text-[#ece9e3]' }} />
     </div>
   )
