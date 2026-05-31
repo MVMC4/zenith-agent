@@ -7,6 +7,37 @@ import { registerIPC } from './ipc/handlers'
 let mainWindow: BrowserWindow | null = null
 const store = new MainStore()
 
+// --- ADD THESE VARIABLES ---
+let isMinimized = false
+let originalBounds: any = null
+
+// --- ADD THIS IPC LISTENER ---
+ipcMain.on('window:toggle-minimize', () => {
+  if (!mainWindow) return
+  if (!isMinimized) {
+    originalBounds = mainWindow.getBounds()
+    const [x, y] = mainWindow.getPosition()
+    const [w, h] = mainWindow.getSize()
+    const centerX = x + w / 2
+    const centerY = y + h / 2
+    
+    const newSize = 104 // 80px ball + 24px shadow margin
+    mainWindow.setSize(newSize, newSize)
+    mainWindow.setPosition(Math.round(centerX - newSize / 2), Math.round(centerY - newSize / 2))
+    
+    isMinimized = true
+    mainWindow.webContents.send('window:minimized')
+  } else {
+    if (originalBounds) {
+      mainWindow.setBounds(originalBounds)
+    } else {
+      mainWindow.setSize(424, 624) // Fallback default size
+    }
+    isMinimized = false
+    mainWindow.webContents.send('window:restored')
+  }
+})
+
 async function createWindow() {
   await store.init()
   const { width: sw } = screen.getPrimaryDisplay().workAreaSize

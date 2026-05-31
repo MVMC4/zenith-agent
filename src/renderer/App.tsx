@@ -76,7 +76,7 @@ export default function App() {
   if (isMinimized) {
     return (
       <div 
-        className="app-shell minimized flex items-center justify-center cursor-pointer"
+        className="app-shell minimized flex items-center justify-center cursor-pointer no-drag"
         onClick={() => window.api.toggleMinimize()}
         title="Click to expand"
       >
@@ -97,14 +97,13 @@ export default function App() {
   // EXPANDED UI
   return (
     <div className="app-shell flex flex-col overflow-hidden">
-      {/* Electron Drag Region + Minimize Trigger */}
-      <div 
-        className="h-6 flex items-center justify-center shrink-0 cursor-pointer" 
-        style={{ WebkitAppRegion: 'drag' } as any}
-        onClick={() => window.api.toggleMinimize()}
-        title="Click to minimize to ball"
-      >
-        <div className="w-10 h-1 bg-[#222] rounded-full" />
+      {/* Electron Drag Region */}
+      <div className="h-8 flex items-center justify-center shrink-0 drag-region">
+        <div 
+          className="w-12 h-1.5 bg-[#2c2c2c] hover:bg-[#c9a84c] rounded-full transition-colors cursor-pointer no-drag" 
+          onDoubleClick={() => window.api.toggleMinimize()}
+          title="Double-click to minimize"
+        />
       </div>
 
       <main className="flex-1 overflow-hidden relative bg-[#050505]">
