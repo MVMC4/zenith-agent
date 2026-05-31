@@ -14,12 +14,10 @@ import { LayoutGrid, BookOpen, History, Search, Sparkles, Pause, Home } from 'lu
 export type View = 'home' | 'decks' | 'history' | 'journal' | 'search' | 'focus' | 'zen'
 
 declare global { interface Window { api: { 
-  getState: () => Promise<AgentState>; 
-  sendCommand: (cmd: any) => void; 
+  getState: () => Promise<AgentState>; sendCommand: (cmd: any) => void; 
   onStateUpdate: (cb: (s: AgentState) => void) => () => void; 
   on: (c: string, cb: (d: any) => void) => () => void; 
-  hideWindow: () => void;
-  toggleMinimize: () => void;
+  hideWindow: () => void; toggleMinimize: () => void;
 } } }
 
 export default function App() {
@@ -72,32 +70,35 @@ export default function App() {
   const activeTask = state.active?.taskIds[0] ? state.tasks.find(t => t.id === state.active!.taskIds[0]) : null
   const isActive = !!state.active?.startedAt
 
-  // MINIMIZED BALL UI
+    // MINIMIZED BALL UI
   if (isMinimized) {
     return (
       <div 
-        className="app-shell minimized flex items-center justify-center cursor-pointer no-drag"
-        onClick={() => window.api.toggleMinimize()}
-        title="Click to expand"
+        className="app-shell minimized flex items-center justify-center drag-region"
+        title="Drag edges to move • Double-click center to expand"
       >
-        <div className="text-center pointer-events-none">
-          {isActive ? (
-            <>
-              <div className="timer-mono text-[#ece9e3] text-lg leading-none">{formatDuration(elapsed)}</div>
-              <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c] pulse-gold mx-auto mt-2" />
-            </>
-          ) : (
-            <div className="text-[#c9a84c] font-serif text-3xl leading-none">Z</div>
-          )}
+        {/* Inner 64x64 circle: no-drag so it catches double-clicks */}
+        <div 
+          className="w-16 h-16 flex items-center justify-center no-drag cursor-pointer rounded-full hover:bg-white/5 transition-colors"
+          onDoubleClick={() => window.api.toggleMinimize()}
+        >
+          <div className="text-center pointer-events-none">
+            {isActive ? (
+              <>
+                <div className="timer-mono text-[#ece9e3] text-lg leading-none">{formatDuration(elapsed)}</div>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c] pulse-gold mx-auto mt-2" />
+              </>
+            ) : (
+              <div className="text-[#c9a84c] font-serif text-3xl leading-none">Z</div>
+            )}
+          </div>
         </div>
       </div>
     )
   }
 
-  // EXPANDED UI
   return (
     <div className="app-shell flex flex-col overflow-hidden">
-      {/* Electron Drag Region */}
       <div className="h-8 flex items-center justify-center shrink-0 drag-region">
         <div 
           className="w-12 h-1.5 bg-[#2c2c2c] hover:bg-[#c9a84c] rounded-full transition-colors cursor-pointer no-drag" 
@@ -126,16 +127,11 @@ export default function App() {
                 <div className="text-sm text-[#ece9e3] truncate font-light">{activeTask.name}</div>
               </div>
               <div className="timer-mono text-[#ece9e3] text-xl mr-4">{formatDuration(elapsed)}</div>
-              <button 
-                type="button" 
-                onClick={() => window.api.sendCommand({ type: 'STOP_SESSION' })} 
-                className="p-2 bg-[#c9a84c] text-[#000] rounded-lg hover:bg-[#d4b55d] transition-colors"
-              >
+              <button type="button" onClick={() => window.api.sendCommand({ type: 'STOP_SESSION' })} className="p-2 bg-[#c9a84c] text-[#000] rounded-lg hover:bg-[#d4b55d] transition-colors">
                 <Pause size={14} strokeWidth={2.5} />
               </button>
             </div>
           )}
-
           <div className="flex justify-around items-center h-14 relative z-50">
             <TabBtn id="home" icon={Home} label="Home" view={view} setView={setView} />
             <TabBtn id="decks" icon={LayoutGrid} label="Decks" view={view} setView={setView} />
@@ -149,7 +145,6 @@ export default function App() {
 
       {view === 'focus' && <FocusView state={state} onClose={() => setView('decks')} />}
       {view === 'zen' && <ZenView state={state} onClose={() => setView('decks')} />}
-      
       <Toaster position="bottom-center" toastOptions={{ className: 'bg-[#0a0a0a] border border-[#1a1a1a] text-[#ece9e3]' }} />
     </div>
   )
@@ -158,11 +153,7 @@ export default function App() {
 function TabBtn({ id, icon: Icon, label, view, setView }: { id: View, icon: any, label: string, view: View, setView: (v: View) => void }) {
   const isActive = view === id
   return (
-    <button 
-      type="button" 
-      onClick={() => setView(id)} 
-      className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors ${isActive ? 'text-[#c9a84c]' : 'text-[#4a4a4a] hover:text-[#7a7a7a]'}`}
-    >
+    <button type="button" onClick={() => setView(id)} className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors ${isActive ? 'text-[#c9a84c]' : 'text-[#4a4a4a] hover:text-[#7a7a7a]'}`}>
       <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} />
       <span className="micro-caps text-[9px]" style={{ color: isActive ? '#c9a84c' : undefined }}>{label}</span>
     </button>

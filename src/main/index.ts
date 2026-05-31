@@ -7,31 +7,35 @@ import { registerIPC } from './ipc/handlers'
 let mainWindow: BrowserWindow | null = null
 const store = new MainStore()
 
-// --- ADD THESE VARIABLES ---
 let isMinimized = false
 let originalBounds: any = null
 
-// --- ADD THIS IPC LISTENER ---
+// IPC Listener for Minimize/Expand
 ipcMain.on('window:toggle-minimize', () => {
   if (!mainWindow) return
+  
   if (!isMinimized) {
     originalBounds = mainWindow.getBounds()
-    const [x, y] = mainWindow.getPosition()
-    const [w, h] = mainWindow.getSize()
-    const centerX = x + w / 2
-    const centerY = y + h / 2
+    const { x, y, width, height } = originalBounds
+    const centerX = x + width / 2
+    const centerY = y + height / 2
     
-    const newSize = 104 // 80px ball + 24px shadow margin
-    mainWindow.setSize(newSize, newSize)
-    mainWindow.setPosition(Math.round(centerX - newSize / 2), Math.round(centerY - newSize / 2))
+    const ballSize = 100 // 100px ball (Change to 10 if you want it microscopic)
+    const windowSize = ballSize + 24 // 24px for the CSS shadow margin
+    
+    // WINDOWS/LINUX FIX: Temporarily allow resizing for frameless windows
+    mainWindow.setResizable(true)
+    mainWindow.setSize(windowSize, windowSize)
+    mainWindow.setPosition(Math.round(centerX - windowSize / 2), Math.round(centerY - windowSize / 2))
+    mainWindow.setResizable(false)
     
     isMinimized = true
     mainWindow.webContents.send('window:minimized')
   } else {
     if (originalBounds) {
+      mainWindow.setResizable(true)
       mainWindow.setBounds(originalBounds)
-    } else {
-      mainWindow.setSize(424, 624) // Fallback default size
+      mainWindow.setResizable(false)
     }
     isMinimized = false
     mainWindow.webContents.send('window:restored')
@@ -48,7 +52,6 @@ async function createWindow() {
     frame: false, transparent: true, alwaysOnTop: true, level: 'floating',
     skipTaskbar: true, resizable: false, thickFrame: false, hasShadow: false,
     webPreferences: {
-      // ✅ Dynamic preload path that works in dev and prod
       preload: is.dev 
         ? path.join(__dirname, '../../out/preload/index.mjs')
         : path.join(__dirname, '../preload/index.mjs'),
